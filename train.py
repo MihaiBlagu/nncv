@@ -6,6 +6,8 @@ from model import Model
 from torchvision.datasets import Cityscapes
 from argparse import ArgumentParser
 
+from data_utils.process_data import plot_images_with_masks
+
 
 def get_arg_parser():
     parser = ArgumentParser()
@@ -21,6 +23,7 @@ def main(args):
     dataset = Cityscapes(args.data_path, split='train', mode='fine', target_type='semantic')
 
     # visualize example images
+    plot_images_with_masks(dataset, indices=[0, 1, 2, 3, 4, 5], num_images_per_row=4)
 
     # define model
     model = Model().cuda()

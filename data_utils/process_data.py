@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 from torchvision import transforms
+import os
 
 
 def preprocess(img):
@@ -10,7 +11,8 @@ def postprocess(prediction, shape):
     pass
 
 
-def plot_images_with_masks(dataset, indices, num_images_per_row=2):
+def plot_images_with_masks(dataset, indices, num_images_per_row=2, 
+                           save=False, save_path="./results/plots"):
     num_images = len(indices)
     num_rows = (num_images + num_images_per_row - 1) // num_images_per_row
 
@@ -25,4 +27,10 @@ def plot_images_with_masks(dataset, indices, num_images_per_row=2):
         ax.axis('off')
 
     plt.tight_layout()
+
+    if save:
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        plt.savefig(os.path.join(save_path, 'image_masks_plot.png'))
+    
     plt.show()
