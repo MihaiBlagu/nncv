@@ -36,7 +36,7 @@ def main(args):
 
     # visualize some results
 
-    pass
+    return 0
 
 
 if __name__ == "__main__":
