@@ -16,7 +16,7 @@ NORM_STD_R, NORM_STD_G, NORM_STD_B = 0.25, 0.25, 0.25
 
 def preprocess_mask(mask):
     transform = transforms.Compose([
-        # transforms.Resize(size=(512, 512), interpolation=transforms.InterpolationMode.NEAREST),
+        transforms.Resize(size=(512, 512), interpolation=transforms.InterpolationMode.NEAREST),
         transforms.ToTensor()
     ])
     mask = transform(mask)
@@ -50,7 +50,7 @@ def postprocess(prediction, shape):
     # prediction_numpy = prediction.cpu().detach().numpy()
     # prediction_numpy = prediction_numpy.squeeze()
 
-    return prediction.permute(1, 2, 0)
+    return prediction
 
 
 def plot_images_with_masks(dataset, indices, num_images_per_row=2, title="default_title",
