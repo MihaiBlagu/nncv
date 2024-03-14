@@ -1,0 +1,79 @@
+import matplotlib.pyplot as plt
+from torchvision import transforms
+import torch
+import os
+
+
+IMAGENET_MEAN_R, IMAGENET_MEAN_G, IMAGENET_MEAN_B = 0.485, 0.456, 0.406
+IMAGENET_STD_R, IMAGENET_STD_G, IMAGENET_STD_B = 0.229, 0.224, 0.225
+
+CLIP_MEAN_R, CLIP_MEAN_G, CLIP_MEAN_B = 0.481, 0.457, 0.408
+CLIP_STD_R, CLIP_STD_G, CLIP_STD_B = 0.268, 0.261, 0.275
+
+NORM_MEAN_R, NORM_MEAN_G, NORM_MEAN_B = 0.5, 0.5, 0.5
+NORM_STD_R, NORM_STD_G, NORM_STD_B = 0.25, 0.25, 0.25
+
+
+def preprocess_mask(mask):
+    transform = transforms.Compose([
+        # transforms.Resize(size=(512, 512), interpolation=transforms.InterpolationMode.NEAREST),
+        transforms.ToTensor()
+    ])
+    mask = transform(mask)
+    mask = mask * 255
+
+    return mask
+
+
+def preprocess(img):
+    transform = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Resize(size=(512, 512), interpolation=transforms.InterpolationMode.BILINEAR),
+        transforms.Normalize(mean=[NORM_MEAN_R, NORM_MEAN_G, NORM_MEAN_B], 
+                             std=[NORM_STD_R, NORM_STD_G, NORM_STD_B])
+    ])
+    img = transform(img)
+    # img = img.unsqueeze(0)
+
+    return img
+
+
+def postprocess(prediction, shape):
+    """Post process prediction to mask:
+    Input is the prediction tensor provided by your model, the original image size.
+    Output should be numpy array with size [x,y,n], where x,y are the original size of the image and n is the class label per pixel.
+    We expect n to return the training id as class labels. training id 255 will be ignored during evaluation."""
+    m = torch.nn.Softmax(dim=1)
+    prediction_soft = m(prediction)
+    prediction_max = torch.argmax(prediction_soft, axis=1)
+    prediction = transforms.functional.resize(prediction_max, size=shape, interpolation=transforms.InterpolationMode.NEAREST)
+    # prediction_numpy = prediction.cpu().detach().numpy()
+    # prediction_numpy = prediction_numpy.squeeze()
+
+    return prediction.permute(1, 2, 0)
+
+
+def plot_images_with_masks(dataset, indices, num_images_per_row=2, title="default_title",
+                           save=False, save_path="./results/plots"):
+    num_images = len(indices)
+    num_rows = (num_images + num_images_per_row - 1) // num_images_per_row
+
+    fig, axes = plt.subplots(num_rows, num_images_per_row, figsize=(10, 5*num_rows))
+
+    for i, idx in enumerate(indices):
+        img, mask = dataset[idx]
+        img, mask = preprocess(img), preprocess(mask)
+        ax = axes[i // num_images_per_row, i % num_images_per_row] if num_rows > 1 else axes[i % num_images_per_row]
+        ax.imshow(img.permute(1, 2, 0))
+        ax.imshow(mask.permute(1, 2, 0), alpha=0.35, cmap='jet')
+        ax.set_title(f'Image {idx}')
+        ax.axis('off')
+
+    plt.tight_layout()
+
+    if save:
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        plt.savefig(os.path.join(save_path, f'{title}.png'))
+    
+    plt.show()
