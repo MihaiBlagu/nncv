@@ -43,12 +43,17 @@ def postprocess(prediction, shape):
     Input is the prediction tensor provided by your model, the original image size.
     Output should be numpy array with size [x,y,n], where x,y are the original size of the image and n is the class label per pixel.
     We expect n to return the training id as class labels. training id 255 will be ignored during evaluation."""
+    # softmax to get class for each pixel
     m = torch.nn.Softmax(dim=1)
     prediction_soft = m(prediction)
+    # get the class with the highest probability
     prediction_max = torch.argmax(prediction_soft, axis=1)
+    # resize to original image size
     prediction = transforms.functional.resize(prediction_max, size=shape, interpolation=transforms.InterpolationMode.NEAREST)
-    # prediction_numpy = prediction.cpu().detach().numpy()
-    # prediction_numpy = prediction_numpy.squeeze()
+    # convert shape: 4, 1024, 2048 (b, h, w) -> 1024, 2048, 4
+    prediction = prediction.permute(1, 2, 0)
+    # convert to numpy
+    prediction = prediction.cpu().detach().numpy()
 
     return prediction
 
