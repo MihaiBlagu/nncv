@@ -4,7 +4,7 @@
 #SBATCH --cpus-per-task=18
 #SBATCH --gpus=1
 #SBATCH --partition=gpu
-#SBATCH --time=01:00:00
+#SBATCH --time=01:30:00
 
 cd /gpfs/home4/scur0748/FinalAssignment
 mkdir wandb/$SLURM_JOBID

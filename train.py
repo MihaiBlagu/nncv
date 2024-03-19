@@ -15,12 +15,14 @@ import torch
 from torch.utils.data.sampler import SubsetRandomSampler
 from sklearn.model_selection import KFold
 import random
+import os
 
 
 def get_arg_parser():
     parser = ArgumentParser()
     parser.add_argument("--data_path", type=str, default=".", help="Path to the data")
     """add more arguments here and change the default values to your needs in the run_container.sh file"""
+    parser.add_argument("--model_save_path", type=str, default="./models", help="Path where .pth files are saved")
     return parser
 
 
@@ -32,9 +34,9 @@ def main(args):
     random.seed(42)
 
     # define batch size and epochs
-    batch_size = 4
-    epochs = 100
-    k_folds = 5
+    batch_size = 32
+    epochs = 10
+    k_folds = 3
 
     # data loading
     dataset = Cityscapes(args.data_path, split='train', mode='fine', target_type='semantic')
@@ -55,6 +57,8 @@ def main(args):
     model = DeepLabV3Plus(num_classes=34).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
     criterion = torch.nn.CrossEntropyLoss(ignore_index=255)
+
+    outputs_per_fold = []
 
     # Loop through each fold
     for fold, (train_idx, val_idx) in enumerate(kf.split(dataset)):
@@ -126,7 +130,7 @@ def main(args):
         print(f"Epoch {epoch}: Validation Dice Score: {val_dice:.4f}")
 
     # save model
-    torch.save(model.state_dict(), "./models/model.pth")
+    torch.save(model.state_dict(), os.path.join(args.model_save_path, "deeplabv3plus_ce.pth"))
 
     # Visualize some results
 
