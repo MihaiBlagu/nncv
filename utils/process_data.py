@@ -82,3 +82,37 @@ def plot_images_with_masks(dataset, indices, num_images_per_row=2, title="defaul
         plt.savefig(os.path.join(save_path, f'{title}.png'))
     
     plt.show()
+
+
+def plot_images_predictions_masks(images, predictions, masks, indices, num_images_per_row=2, title="default_title",
+                                  save=False, save_path="./results/plots"):
+    num_images = len(indices)
+    num_rows = (num_images + num_images_per_row - 1) // num_images_per_row
+
+    fig, axes = plt.subplots(num_rows, num_images_per_row * 2, figsize=(10, 5*num_rows))
+
+    for i, idx in enumerate(indices):
+        img = images[idx]
+        pred = predictions[idx]
+        mask = masks[idx]
+
+        ax_img = axes[i // num_images_per_row, 2 * (i % num_images_per_row)]
+        ax_pred = axes[i // num_images_per_row, 2 * (i % num_images_per_row) + 1]
+
+        ax_img.imshow(img.permute(1,2,0))
+        ax_img.imshow(mask.permute(1,2,0), alpha=0.35, cmap='jet')
+        ax_img.set_title(f'Image {idx}')
+        ax_img.axis('off')
+
+        ax_pred.imshow(pred.argmax(dim=0), alpha=0.35, cmap='jet')
+        ax_pred.set_title(f'Prediction {idx}')
+        ax_pred.axis('off')
+
+    plt.tight_layout()
+
+    if save:
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        plt.savefig(os.path.join(save_path, f'{title}.png'))
+
+    plt.show()
