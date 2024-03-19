@@ -16,7 +16,7 @@ NORM_STD_R, NORM_STD_G, NORM_STD_B = 0.25, 0.25, 0.25
 
 def preprocess_mask(mask):
     transform = transforms.Compose([
-        transforms.Resize(size=(512, 512), interpolation=transforms.InterpolationMode.NEAREST),
+        transforms.Resize(size=(512, 512), interpolation=transforms.InterpolationMode.NEAREST, antialias=True),
         transforms.ToTensor()
     ])
     mask = transform(mask)
@@ -28,7 +28,7 @@ def preprocess_mask(mask):
 def preprocess(img):
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Resize(size=(512, 512), interpolation=transforms.InterpolationMode.BILINEAR),
+        transforms.Resize(size=(512, 512), interpolation=transforms.InterpolationMode.BILINEAR, antialias=True),
         transforms.Normalize(mean=[NORM_MEAN_R, NORM_MEAN_G, NORM_MEAN_B], 
                              std=[NORM_STD_R, NORM_STD_G, NORM_STD_B])
     ])
