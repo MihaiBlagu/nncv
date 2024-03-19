@@ -2,7 +2,8 @@
 This file needs to contain the main training loop. The training code should be encapsulated in a main() function to
 avoid any global variables.
 """
-from model import Model
+# from model import Model
+from custom_model import DeepLabV3Plus
 from torchvision.datasets import Cityscapes
 from argparse import ArgumentParser
 
@@ -50,8 +51,9 @@ def main(args):
     kf = KFold(n_splits=k_folds, shuffle=True)
 
     # Define the model and optimizer
-    model = Model().to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    # model = Model().to(device)
+    model = DeepLabV3Plus(num_classes=34).to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=1e-5)
     criterion = torch.nn.CrossEntropyLoss(ignore_index=255)
 
     # Loop through each fold
@@ -62,10 +64,6 @@ def main(args):
         # define indices for current fold
         train_indices = train_idx.tolist()
         val_indices = val_idx.tolist()
-
-        # convert to dataloader
-        # train_loader = DataLoader(dataset, batch_size=batch_size, sampler=SubsetRandomSampler(train_indices))
-        # val_loader = DataLoader(dataset, batch_size=batch_size, sampler=SubsetRandomSampler(val_indices))
 
         # training
         train_losses = []
@@ -94,7 +92,6 @@ def main(args):
                 outputs = model(images) 
                 # outputs shape: b, 34, 512, 512 -> 1024, 2048, b -> no postproc yet???? also mask resized
                 # outputs = postprocess(outputs, (img_h, img_w))
-                # ignore_index -> not supported for float
                 loss = criterion(outputs, masks.squeeze().long())
                 loss.backward()
                 optimizer.step()
@@ -127,6 +124,9 @@ def main(args):
 
         val_dice = total_val_dice / num_val_batches
         print(f"Epoch {epoch}: Validation Dice Score: {val_dice:.4f}")
+
+    # save model
+    torch.save(model.state_dict(), "./models/model.pth")
 
     # Visualize some results
 
