@@ -1,4 +1,6 @@
 import torch
+import torch.nn.functional as F
+
 
 def train(model, device, train_loader, optimizer, criterion):
     model.train()
@@ -19,10 +21,26 @@ def train(model, device, train_loader, optimizer, criterion):
 
 
 def dice_score(output, target):
-    smooth = 1e-5  # Small constant to prevent division by zero
-    output = torch.argmax(output, dim=1).float()  # Assuming output is logits, applying argmax to get predicted class
+    # Small constant to prevent division by zero
+    eps = 1e-5  
+    # Smoothing factor
+    smooth = 1.
+    
+    # # Convert logits to probabilities
+    # output_probs = F.softmax(output, dim=1)  # Assuming output is logits
+    
+    # Apply argmax to get predicted class
+    output = torch.argmax(output, dim=1).float() 
+    
+    # Convert target to float
     target = target.float()
+    
+    # Calculate intersection and union
     intersection = torch.sum(output * target)
-    union = torch.sum(output) + torch.sum(target)
-    dice = (2.0 * intersection + smooth) / (union + smooth)
+    sum_output = torch.sum(output)
+    sum_target = torch.sum(target)
+    union = sum_output + sum_target
+    
+    # Calculate Dice score
+    dice = (2.0 * intersection) / (union + eps)
     return dice
