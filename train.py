@@ -259,7 +259,7 @@ def main(args):
             torch.save(model.state_dict(), os.path.join(args.model_save_path, f"deeplabv3plus_ce_e{10}.pth"))
 
         # early stopping if validation stops decreasing
-        loss_difference = abs(total_val_loss - (sum(prev_val_losses[-(patience - 1):]) / patience))
+        loss_difference = abs(total_val_loss - (sum(val_losses[-(patience - 1):]) / patience))
         if epoch > patience and loss_difference < patience_threshold:
             print("Stopping Early...")
             # save model
