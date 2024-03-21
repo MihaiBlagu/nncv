@@ -222,7 +222,7 @@ def main(args):
             gc.collect()
             torch.cuda.empty_cache()
         train_losses.append(total_train_loss / num_train_batches)
-        print(f"Epoch {epoch}: Training Loss: {train_losses[-1]:.4f}")
+        print(f"Training Loss: {train_losses[-1]:.4f}")
 
         # validation
         model.eval()
@@ -244,8 +244,8 @@ def main(args):
             # clear cuda memory
             gc.collect()
             torch.cuda.empty_cache()
-        print(f"Epoch {epoch}: Validation Loss: {val_losses[-1]:.4f}")
-        print(f"Epoch {epoch}: Validation Dice Score: {val_dices[-1]:.4f}")
+        print(f"Validation Loss: {val_losses[-1]:.4f}")
+        print(f"Validation Dice Score: {val_dices[-1]:.4f}")
         
         scheduler.step()
 
