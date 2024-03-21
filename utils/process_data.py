@@ -15,6 +15,7 @@ NORM_STD_R, NORM_STD_G, NORM_STD_B = 0.25, 0.25, 0.25
 
 
 def preprocess_mask(mask):
+    ""
     transform = transforms.Compose([
         transforms.Resize(size=(512, 512), interpolation=transforms.InterpolationMode.NEAREST, antialias=True),
         transforms.ToTensor()
@@ -25,12 +26,32 @@ def preprocess_mask(mask):
     return mask
 
 
+def preprocess_train(img):
+    train_transform = transforms.Compose([
+        transforms.Resize(size=(512, 512), interpolation=transforms.InterpolationMode.NEAREST, antialias=True),
+        transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=[IMAGENET_MEAN_R, IMAGENET_MEAN_G, IMAGENET_MEAN_B], 
+            std=[IMAGENET_STD_R, IMAGENET_STD_G, IMAGENET_STD_B]
+        )
+    ])
+
+    return train_transform(img)
+
+
 def preprocess(img):
+    '''
+    Function used at validation tim to resize, reshape, normalize image in theway the model expects it
+    
+
+    '''
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Resize(size=(512, 512), interpolation=transforms.InterpolationMode.BILINEAR, antialias=True),
-        transforms.Normalize(mean=[NORM_MEAN_R, NORM_MEAN_G, NORM_MEAN_B], 
-                             std=[NORM_STD_R, NORM_STD_G, NORM_STD_B])
+        transforms.Normalize(mean=[IMAGENET_MEAN_R, IMAGENET_MEAN_G, IMAGENET_MEAN_R], 
+                             std=[IMAGENET_STD_R, IMAGENET_STD_G, IMAGENET_STD_B])
     ])
     img = transform(img)
     # img = img.unsqueeze(0)
@@ -39,10 +60,13 @@ def preprocess(img):
 
 
 def postprocess(prediction, shape):
-    """Post process prediction to mask:
+    """
+    Post process prediction to mask:
     Input is the prediction tensor provided by your model, the original image size.
     Output should be numpy array with size [x,y,n], where x,y are the original size of the image and n is the class label per pixel.
-    We expect n to return the training id as class labels. training id 255 will be ignored during evaluation."""
+    We expect n to return the training id as class labels. training id 255 will be ignored during evaluation.
+    
+    """
     # softmax to get class for each pixel
     m = torch.nn.Softmax(dim=1)
     prediction_soft = m(prediction)
@@ -100,8 +124,8 @@ def plot_images_predictions_masks(images, predictions, masks, indices, num_image
         ax_pred = axes[i // num_images_per_row, 2 * (i % num_images_per_row) + 1]
 
         ax_img.imshow(img.permute(1,2,0))
-        ax_img.imshow(mask.permute(1,2,0), alpha=0.35, cmap='jet')
-        ax_img.set_title(f'Image {idx}')
+        ax_img.imshow(pred.argmax(dim=0), alpha=0.35, cmap='jet')
+        ax_img.set_title(f'Mask {idx}')
         ax_img.axis('off')
 
         ax_pred.imshow(pred.argmax(dim=0), alpha=0.35, cmap='jet')
