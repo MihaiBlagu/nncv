@@ -185,13 +185,18 @@ def main(args):
     model = DeepLabV3Plus(num_classes=34).to(device)
 
     # start from lr = (1 - curr_iter/max_iter)^0.9
-    optimizer = torch.optim.SGD(params=model.parameters(), lr=0.1, momentum=0.9, weight_decay=1e-5)
+    optimizer = torch.optim.SGD(params=model.parameters(), lr=0.1, momentum=0.9, weight_decay=1e-3)
     # step_size = 1 -> decay weight every epoch
     # gamma = 0.1 -> deccay factor
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.1)
 
     # loss
     criterion = torch.nn.CrossEntropyLoss(ignore_index=255)
+
+    # patience for early stopping
+    patience = 5
+    patience_threshold = 0.03
+    saved_by_early_stopping = False
 
     # training
     train_losses = []
@@ -249,8 +254,22 @@ def main(args):
         
         scheduler.step()
 
-    # save model
-    torch.save(model.state_dict(), os.path.join(args.model_save_path, "deeplabv3plus_ce.pth"))
+        # periodic model saving
+        if epoch % 10 == 0:
+            torch.save(model.state_dict(), os.path.join(args.model_save_path, f"deeplabv3plus_ce_e{10}.pth"))
+
+        # early stopping if validation stops decreasing
+        if epoch > 10 \ 
+            and abs(total_val_loss - (sum(prev_val_losses[-(patience - 1):]) / patience)) < patience_threshold:
+            
+            print("Stopping Early...")
+            # save model
+            torch.save(model.state_dict(), os.path.join(args.model_save_path, "deeplabv3plus_ce.pth"))
+            saved_by_early_stopping = True
+
+    if not saved_by_early_stopping:
+        # save model
+        torch.save(model.state_dict(), os.path.join(args.model_save_path, "deeplabv3plus_ce.pth"))
 
 
 def test_model(args, model_name="deeplabv3plus_ce.pth"):
