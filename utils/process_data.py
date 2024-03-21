@@ -85,7 +85,7 @@ def plot_images_with_masks(dataset, indices, num_images_per_row=2, title="defaul
 
 
 def plot_images_predictions_masks(images, predictions, masks, indices, num_images_per_row=2, title="default_title",
-                                  save=False, save_path="./results/plots"):
+                                  save=False, save_path="./plots"):
     num_images = len(indices)
     num_rows = (num_images + num_images_per_row - 1) // num_images_per_row
 
