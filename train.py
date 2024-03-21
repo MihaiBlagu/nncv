@@ -17,6 +17,7 @@ from torch.utils.data.sampler import SubsetRandomSampler
 from sklearn.model_selection import KFold
 import random
 import os
+import gc
 
 
 def get_arg_parser():
@@ -152,18 +153,21 @@ def ex_main(args):
 
 def main(args):
     """define your model, trainingsloop optimitzer etc. here"""
+    # set cuda reservation max split size
+    os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:32' 
+
     # get device
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     random.seed(42)
 
     # define batch size and epochs
-    batch_size = 4
-    epochs = 1
+    batch_size = 16
+    epochs = 50
 
     # data loading
     trainset = Cityscapes(args.data_path, split='train', mode='fine', target_type='semantic',
                          transform=preprocess_train, target_transform=preprocess_mask)
-    valset = Cityscapes(args.data_path, split='val', mode='fine', target_type='semantic',
+    valset = Cityscapes(args.test_data_path, split='val', mode='fine', target_type='semantic',
                         transform=preprocess, target_transform=preprocess_mask)
 
     # visualize example images
@@ -172,12 +176,6 @@ def main(args):
 
     # save original image height and width
     # img_w, img_h = trainset[0][0].size
-
-    # for testing purposes
-    trainset.images = trainset.images[:8]
-    trainset.targets = trainset.targets[:8]
-    valset.images = valset.images[:8]
-    valset.targets = valset.targets[:8]
 
     train_loader = DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=2, drop_last=True)
     val_loader = DataLoader(valset, batch_size=batch_size, shuffle=True, num_workers=2, drop_last=True)
@@ -200,6 +198,8 @@ def main(args):
     val_losses = []
     val_dices = []
     for epoch in range(1, epochs + 1):
+        print(f"\nEpoch {epoch}")
+
         # train
         model.train()
         total_train_loss = 0.0
@@ -217,6 +217,10 @@ def main(args):
             optimizer.step()
 
             total_train_loss += loss.item()
+
+            # clear cuda memory
+            gc.collect()
+            torch.cuda.empty_cache()
         train_losses.append(total_train_loss / num_train_batches)
         print(f"Epoch {epoch}: Training Loss: {train_losses[-1]:.4f}")
 
@@ -236,11 +240,14 @@ def main(args):
                 total_val_loss += loss.item()
             val_losses.append(total_val_loss / num_val_batches)
             val_dices.append(total_val_dice / num_val_batches)
-        
-        scheduler.step()
 
+            # clear cuda memory
+            gc.collect()
+            torch.cuda.empty_cache()
         print(f"Epoch {epoch}: Validation Loss: {val_losses[-1]:.4f}")
         print(f"Epoch {epoch}: Validation Dice Score: {val_dices[-1]:.4f}")
+        
+        scheduler.step()
 
     # save model
     torch.save(model.state_dict(), os.path.join(args.model_save_path, "deeplabv3plus_ce.pth"))
@@ -256,10 +263,10 @@ def test_model(args, model_name="deeplabv3plus_ce.pth"):
                                     map_location=torch.device(device)))
 
     # define batch size
-    batch_size = 4
+    batch_size = 16
 
     # load_data
-    testset = Cityscapes(args.data_path, split='test', mode='fine', target_type='semantic',
+    testset = Cityscapes(args.test_data_path, split='test', mode='fine', target_type='semantic',
                         transform=preprocess, target_transform=preprocess_mask)
     
     testset.images = testset.images[:8]
@@ -286,7 +293,7 @@ def test_model(args, model_name="deeplabv3plus_ce.pth"):
             total_test_dice += dice.item()
             totalt_test_loss += loss.item()
 
-            if random.random() < 1.0:
+            if random.random() < 0.2:
                 # generate 4 random indices in range batch_size
                 indices = random.sample(range(batch_size), 4)
                 plot_images_predictions_masks(images, outputs, masks, 
@@ -294,6 +301,10 @@ def test_model(args, model_name="deeplabv3plus_ce.pth"):
                                         title=f"Test Batch {curr_batch}", save=True)
             
             curr_batch += 1
+            
+            # clear cuda memory
+            gc.collect()
+            torch.cuda.empty_cache()
 
     test_dice_score = total_test_dice / num_test_batches
     test_loss = totalt_test_loss / num_test_batches
@@ -305,5 +316,5 @@ if __name__ == "__main__":
     # Get the arguments
     parser = get_arg_parser()
     args = parser.parse_args()
-    # main(args)
+    main(args)
     test_model(args, model_name="deeplabv3plus_ce.pth")
