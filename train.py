@@ -17,6 +17,9 @@ from sklearn.model_selection import KFold
 import random
 import os
 
+import gc
+
+
 
 def get_arg_parser():
     parser = ArgumentParser()
@@ -30,12 +33,18 @@ def get_arg_parser():
 def main(args):
     """define your model, trainingsloop optimitzer etc. here"""
 
+    # set cuda allocation size to 128MB to prevent gpu memory fragmentation
+    os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:32'
+
     # get device
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     random.seed(42)
 
+    # set torch acllocation size
+    os.environ
+
     # define batch size and epochs
-    batch_size = 32
+    batch_size = 16
     epochs = 10
     k_folds = 3
 
@@ -131,9 +140,16 @@ def main(args):
 
     # save model
     torch.save(model.state_dict(), os.path.join(args.model_save_path, "deeplabv3plus_ce.pth"))
+
+    # clean gpu memory after training
+    gc.collect()
+    torch.cuda.empty_cache()
     
 
 def test_model(args, model_name="deeplabv3plus_ce.pth"):
+    
+    # set cuda allocation size to 128MB to prevent gpu memory fragmentation
+    os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:32'
 
     # get device
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -152,9 +168,10 @@ def test_model(args, model_name="deeplabv3plus_ce.pth"):
     model.eval()
     total_test_dice = 0.0
     num_test_batches = len(testset) // batch_size
-    test_outputs = []
-    test_masks = []
-    test_images = []
+    # maybe these things occupy mem
+    # test_outputs = []
+    # test_masks = []
+    # test_images = []
     with torch.no_grad():
         for i in range(0, len(testset), batch_size):
             # Create batches
@@ -172,30 +189,40 @@ def test_model(args, model_name="deeplabv3plus_ce.pth"):
             dice = dice_score(outputs, masks.squeeze())
             total_test_dice += dice.item()
 
-            test_outputs.append(outputs)
-            test_masks.append(masks)
-            test_images.append(images)
+            # test_outputs.append(outputs)
+            # test_masks.append(masks)
+            # test_images.append(images)
+            
+            # save batch 3
+            if i == 3 or i == 9 or i == 12:
+                plot_images_predictions_masks(images[i], outputs[i], masks[i], 
+                                    indices=range(len(batch_size)), num_images_per_row=2, 
+                                    title=f"Test Batch {i+1}", save=True)
+
 
         test_dice_score = total_test_dice / num_test_batches
         print(f"Testing Dice Score: {test_dice_score:.4f}")
 
 
-    # Randomly sample two batches
-    sampled_indices = random.sample(range(len(test_outputs)), 2)
-    sampled_images = [test_images[idx] for idx in sampled_indices]
-    sampled_masks = [test_masks[idx] for idx in sampled_indices]
-    sampled_outputs = [test_outputs[idx] for idx in sampled_indices]
+    # # Randomly sample two batches
+    # sampled_indices = random.sample(range(len(test_outputs)), 4)
+    # sampled_images = [test_images[idx] for idx in sampled_indices]
+    # sampled_masks = [test_masks[idx] for idx in sampled_indices]
+    # sampled_outputs = [test_outputs[idx] for idx in sampled_indices]
 
-    # Plot the sampled batches
-    for i in range(2):  # Assuming you want to plot two batches
-        plot_images_predictions_masks(sampled_images[i], sampled_outputs[i], sampled_masks[i], 
-                                    indices=range(len(sampled_images[i])), num_images_per_row=2, 
-                                    title=f"Test Batch {i+1}", save=False)
+    # # Plot the sampled batches
+    # for i in range(2):  # Assuming you want to plot two batches
+    #     plot_images_predictions_masks(sampled_images[i], sampled_outputs[i], sampled_masks[i], 
+    #                                 indices=range(len(sampled_images[i])), num_images_per_row=2, 
+    #                                 title=f"Test Batch {i+1}", save=False)
 
+    # clean gpu memory after testing
+    gc.collect()
+    torch.cuda.empty_cache()
 
 if __name__ == "__main__":
     # Get the arguments
     parser = get_arg_parser()
     args = parser.parse_args()
-    main(args)
+    # main(args)
     test_model(args, model_name="deeplabv3plus_ce.pth")
