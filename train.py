@@ -26,6 +26,7 @@ def get_arg_parser():
     """add more arguments here and change the default values to your needs in the run_container.sh file"""
     parser.add_argument("--test_data_path", type=str, default=".", help="Path to the test data")
     parser.add_argument("--model_save_path", type=str, default="./models", help="Path where .pth files are saved")
+    parser.add_argument("--plot_save_path", type=str, default="./plots", help="Path where plots are saved")
     return parser
 
 
@@ -195,7 +196,7 @@ def main(args):
 
     # patience for early stopping
     patience = 5
-    patience_threshold = 0.03
+    patience_threshold = 0.02
     saved_by_early_stopping = False
 
     # training
@@ -256,10 +257,10 @@ def main(args):
 
         # periodic model saving
         if epoch % 10 == 0:
-            torch.save(model.state_dict(), os.path.join(args.model_save_path, f"deeplabv3plus_ce_e{10}.pth"))
+            torch.save(model.state_dict(), os.path.join(args.model_save_path, f"deeplabv3plus_ce_e{epoch}.pth"))
 
         # early stopping if validation stops decreasing
-        loss_difference = abs(total_val_loss - (sum(val_losses[-(patience - 1):]) / patience))
+        loss_difference = abs(total_val_loss - (sum(val_losses[-(patience - 1):]) / (patience - 1)))
         if epoch > patience and loss_difference < patience_threshold:
             print("Stopping Early...")
             # save model
@@ -286,9 +287,6 @@ def test_model(args, model_name="deeplabv3plus_ce.pth"):
     # load_data
     testset = Cityscapes(args.test_data_path, split='test', mode='fine', target_type='semantic',
                         transform=preprocess, target_transform=preprocess_mask)
-    
-    testset.images = testset.images[:8]
-    testset.targets = testset.targets[:8]
     test_loader = DataLoader(testset, batch_size=batch_size, shuffle=True, num_workers=2, drop_last=True)
 
     # loss
