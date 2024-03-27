@@ -3,7 +3,7 @@ This file needs to contain the main training loop. The training code should be e
 avoid any global variables.
 """
 # from model import Model
-from custom_model import DeepLabV3Plus
+from custom_model import Model
 from torchvision.datasets import Cityscapes
 from argparse import ArgumentParser
 
@@ -57,7 +57,7 @@ def ex_main(args):
 
     # Define the model and optimizer
     # model = Model().to(device)
-    model = DeepLabV3Plus(num_classes=34).to(device)
+    model = Model(num_classes=34).to(device)
     
     # USE THIS WITH KFOLD
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=1e-3)
@@ -181,7 +181,7 @@ def main(args):
     val_loader = DataLoader(valset, batch_size=batch_size, shuffle=True, num_workers=2, drop_last=True)
 
     # Define the model and optimizer
-    model = DeepLabV3Plus(num_classes=34).to(device)
+    model = Model(num_classes=34).to(device)
 
     epochs = 100
     lr = 0.01
@@ -284,7 +284,7 @@ def test_model(args, model_name="deeplabv3plus_ce.pth"):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # load model from .pth file
-    model = DeepLabV3Plus(num_classes=34).to(device)
+    model = Model(num_classes=34).to(device)
     model.load_state_dict(torch.load(os.path.join(args.model_save_path, model_name), 
                                     map_location=torch.device(device)))
 

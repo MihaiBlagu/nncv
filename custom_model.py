@@ -7,10 +7,10 @@ import torch.nn.functional as F
 from torchvision import models
 
 
-class DeepLabV3Plus(nn.Module):
+class Model(nn.Module):
     def __init__(self, num_classes):
 
-        super(DeepLabV3Plus, self).__init__()
+        super(Model, self).__init__()
 
         self.backbone = ResNet_50(output_layer='layer3')
 
