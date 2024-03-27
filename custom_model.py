@@ -8,7 +8,7 @@ from torchvision import models
 
 
 class Model(nn.Module):
-    def __init__(self, num_classes):
+    def __init__(self, num_classes=34):
 
         super(Model, self).__init__()
 
