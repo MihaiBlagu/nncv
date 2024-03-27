@@ -29,13 +29,13 @@ def preprocess_mask(mask):
 def preprocess_train(img):
     train_transform = transforms.Compose([
         transforms.Resize(size=(512, 512), interpolation=transforms.InterpolationMode.NEAREST, antialias=True),
-        transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
-        transforms.RandomHorizontalFlip(),
+        # transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
+        # transforms.RandomHorizontalFlip(),
         transforms.ToTensor(),
-        transforms.Normalize(
-            mean=[IMAGENET_MEAN_R, IMAGENET_MEAN_G, IMAGENET_MEAN_B], 
-            std=[IMAGENET_STD_R, IMAGENET_STD_G, IMAGENET_STD_B]
-        )
+        # transforms.Normalize(
+        #     mean=[IMAGENET_MEAN_R, IMAGENET_MEAN_G, IMAGENET_MEAN_B], 
+        #     std=[IMAGENET_STD_R, IMAGENET_STD_G, IMAGENET_STD_B]
+        # )
     ])
 
     return train_transform(img)
@@ -48,10 +48,10 @@ def preprocess(img):
 
     '''
     transform = transforms.Compose([
-        transforms.ToTensor(),
         transforms.Resize(size=(512, 512), interpolation=transforms.InterpolationMode.BILINEAR, antialias=True),
-        transforms.Normalize(mean=[IMAGENET_MEAN_R, IMAGENET_MEAN_G, IMAGENET_MEAN_R], 
-                             std=[IMAGENET_STD_R, IMAGENET_STD_G, IMAGENET_STD_B])
+        transforms.ToTensor(),
+        # transforms.Normalize(mean=[IMAGENET_MEAN_R, IMAGENET_MEAN_G, IMAGENET_MEAN_R], 
+        #                      std=[IMAGENET_STD_R, IMAGENET_STD_G, IMAGENET_STD_B])
     ])
     img = transform(img)
     # img = img.unsqueeze(0)
@@ -123,12 +123,12 @@ def plot_images_predictions_masks(images, predictions, masks, indices, num_image
         ax_img = axes[i // num_images_per_row, 2 * (i % num_images_per_row)]
         ax_pred = axes[i // num_images_per_row, 2 * (i % num_images_per_row) + 1]
 
-        ax_img.imshow(img.permute(1,2,0))
-        ax_img.imshow(pred.argmax(dim=0), alpha=0.35, cmap='jet')
+        ax_img.imshow(img.cpu().permute(1,2,0).numpy())
+        ax_img.imshow(pred.argmax(dim=0).cpu().numpy(), alpha=0.35, cmap='jet')
         ax_img.set_title(f'Mask {idx}')
         ax_img.axis('off')
 
-        ax_pred.imshow(pred.argmax(dim=0), alpha=0.35, cmap='jet')
+        ax_pred.imshow(pred.argmax(dim=0).cpu().numpy(), alpha=0.35, cmap='jet')
         ax_pred.set_title(f'Prediction {idx}')
         ax_pred.axis('off')
 

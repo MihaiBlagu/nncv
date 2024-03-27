@@ -161,10 +161,6 @@ def main(args):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     random.seed(42)
 
-    # define batch size and epochs
-    batch_size = 16
-    epochs = 50
-
     # data loading
     trainset = Cityscapes(args.data_path, split='train', mode='fine', target_type='semantic',
                          transform=preprocess_train, target_transform=preprocess_mask)
@@ -178,18 +174,25 @@ def main(args):
     # save original image height and width
     # img_w, img_h = trainset[0][0].size
 
+    # define batch size and epochs
+    batch_size = 16
+
     train_loader = DataLoader(trainset, batch_size=batch_size, shuffle=True, num_workers=2, drop_last=True)
     val_loader = DataLoader(valset, batch_size=batch_size, shuffle=True, num_workers=2, drop_last=True)
-
 
     # Define the model and optimizer
     model = DeepLabV3Plus(num_classes=34).to(device)
 
-    # start from lr = (1 - curr_iter/max_iter)^0.9
-    optimizer = torch.optim.SGD(params=model.parameters(), lr=0.1, momentum=0.9, weight_decay=1e-3)
-    # step_size = 1 -> decay weight every epoch
-    # gamma = 0.1 -> deccay factor
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.1)
+    epochs = 100
+    lr = 0.01
+
+    # # start from lr = (1 - curr_iter/max_iter)^0.9
+    # optimizer = torch.optim.SGD(params=model.parameters(), lr=0.1, momentum=0.9, weight_decay=1e-3)
+    # # step_size = 1 -> decay weight every epoch
+    # # gamma = 0.1 -> deccay factor
+    # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.1)
+
+    optimizer = torch.optim.Adam(params=model.parameters(), lr=lr, weight_decay=1e-5)
 
     # loss
     criterion = torch.nn.CrossEntropyLoss(ignore_index=255)
@@ -197,13 +200,16 @@ def main(args):
     # patience for early stopping
     patience = 5
     patience_threshold = 0.02
-    saved_by_early_stopping = False
+    stopped_early = False
 
     # training
     train_losses = []
     val_losses = []
     val_dices = []
     for epoch in range(1, epochs + 1):
+        if stopped_early:
+            break
+
         print(f"\nEpoch {epoch}")
 
         # train
@@ -253,23 +259,24 @@ def main(args):
         print(f"Validation Loss: {val_losses[-1]:.4f}")
         print(f"Validation Dice Score: {val_dices[-1]:.4f}")
         
-        scheduler.step()
+        # scheduler.step()
 
         # periodic model saving
         if epoch % 10 == 0:
-            torch.save(model.state_dict(), os.path.join(args.model_save_path, f"deeplabv3plus_ce_e{epoch}.pth"))
+            torch.save(model.state_dict(), os.path.join(args.model_save_path, f"deeplabv3plus_adam_ce_e{epoch}_none_lr{lr}.pth"))
 
-        # early stopping if validation stops decreasing
-        loss_difference = abs(total_val_loss - (sum(val_losses[-(patience - 1):]) / (patience - 1)))
-        if epoch > patience and loss_difference < patience_threshold:
-            print("Stopping Early...")
-            # save model
-            torch.save(model.state_dict(), os.path.join(args.model_save_path, "deeplabv3plus_ce.pth"))
-            saved_by_early_stopping = True
+        # # early stopping if validation stops decreasing
+        # loss_difference = abs(val_losses[-1] - (sum(val_losses[-(patience - 1):]) / (patience - 1)))
+        # print(loss_difference)
+        # if epoch > patience and loss_difference < patience_threshold:
+        #     print("Stopping Early...")
+        #     # save model
+        #     torch.save(model.state_dict(), os.path.join(args.model_save_path, "deeplabv3plus_adam_ce.pth"))
+        #     stopped_early = True
 
-    if not saved_by_early_stopping:
+    if not stopped_early:
         # save model
-        torch.save(model.state_dict(), os.path.join(args.model_save_path, "deeplabv3plus_ce.pth"))
+        torch.save(model.state_dict(), os.path.join(args.model_save_path, f"deeplabv3plus_ce_e{epochs}_none_lr{lr}.pth"))
 
 
 def test_model(args, model_name="deeplabv3plus_ce.pth"):
@@ -314,7 +321,8 @@ def test_model(args, model_name="deeplabv3plus_ce.pth"):
                 indices = random.sample(range(batch_size), 4)
                 plot_images_predictions_masks(images, outputs, masks, 
                                         indices=range(batch_size), num_images_per_row=2, 
-                                        title=f"Test Batch {curr_batch}", save=True)
+                                        title=f"Test Batch {curr_batch}", 
+                                        save=True, save_path=f"./plots/{model_name}")
             
             curr_batch += 1
             
@@ -332,5 +340,6 @@ if __name__ == "__main__":
     # Get the arguments
     parser = get_arg_parser()
     args = parser.parse_args()
-    main(args)
-    test_model(args, model_name="deeplabv3plus_ce.pth")
+    test_model(args, model_name="deeplabv3plus_adam_ce_e70_none_lr0.01.pth")
+    # main(args)
+    # test_model(args, model_name="deeplabv3plus_adam_ce_e100_none_lr0.01.pth")
