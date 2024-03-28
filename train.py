@@ -183,11 +183,11 @@ def main(args):
     # Define the model and optimizer
     model = Model(num_classes=34).to(device)
 
-    epochs = 100
+    epochs = 75
     lr = 0.01
 
     # # start from lr = (1 - curr_iter/max_iter)^0.9
-    # optimizer = torch.optim.SGD(params=model.parameters(), lr=0.1, momentum=0.9, weight_decay=1e-3)
+    # optimizer = torch.optim.SGD(params=model.parameters(), lr=lr, momentum=0.9, weight_decay=1e-3)
     # # step_size = 1 -> decay weight every epoch
     # # gamma = 0.1 -> deccay factor
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.1)
@@ -217,7 +217,8 @@ def main(args):
         total_train_loss = 0.0
         num_train_batches = len(train_loader)
         for (images, masks) in train_loader:
-            images, masks = images.to(device), masks.to(device)
+            images = images.to(device)
+            masks = map_id_to_train_id(masks).to(device)
 
             optimizer.zero_grad()
             # images shape: b, 3, 512, 512
@@ -243,7 +244,8 @@ def main(args):
         num_val_batches = len(val_loader)
         with torch.no_grad():
             for (images, masks) in val_loader:
-                images, masks = images.to(device), masks.to(device)
+                images = images.to(device)
+                masks = map_id_to_train_id(masks).to(device)
 
                 outputs = model(images)
                 dice = dice_score(outputs, masks.squeeze())
@@ -263,7 +265,7 @@ def main(args):
 
         # periodic model saving
         if epoch % 10 == 0:
-            torch.save(model.state_dict(), os.path.join(args.model_save_path, f"deeplabv3plus_adam_ce_e{epoch}_none_lr{lr}.pth"))
+            torch.save(model.state_dict(), os.path.join(args.model_save_path, f"deeplabv3plus_adam_ce_e{epoch}_none_lr{lr}_18.pth"))
 
         # # early stopping if validation stops decreasing
         # loss_difference = abs(val_losses[-1] - (sum(val_losses[-(patience - 1):]) / (patience - 1)))
@@ -276,7 +278,7 @@ def main(args):
 
     if not stopped_early:
         # save model
-        torch.save(model.state_dict(), os.path.join(args.model_save_path, f"deeplabv3plus_ce_e{epochs}_none_lr{lr}.pth"))
+        torch.save(model.state_dict(), os.path.join(args.model_save_path, f"deeplabv3plus_adam_ce_e{epochs}_none_lr{lr}_18.pth"))
 
 
 def test_model(args, model_name="deeplabv3plus_ce.pth"):
@@ -340,6 +342,7 @@ if __name__ == "__main__":
     # Get the arguments
     parser = get_arg_parser()
     args = parser.parse_args()
-    test_model(args, model_name="deeplabv3plus_adam_ce_e70_none_lr0.01.pth")
+    test_model(args, model_name="deeplabv3plus_adam_ce_e40_none_lr0.01_18.pth")
+    test_model(args, model_name="deeplabv3plus_adam_ce_e75_none_lr0.01_18.pth")
     # main(args)
-    # test_model(args, model_name="deeplabv3plus_adam_ce_e100_none_lr0.01.pth")
+    # test_model(args, model_name="deeplabv3plus_adam_ce_e100_none_lr0.01_18.pth")
