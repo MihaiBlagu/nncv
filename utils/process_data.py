@@ -67,19 +67,30 @@ def postprocess(prediction, shape):
     We expect n to return the training id as class labels. training id 255 will be ignored during evaluation.
     
     """
-    # softmax to get class for each pixel
+    # # # softmax to get class for each pixel
+    # # m = torch.nn.Softmax(dim=1)
+    # # prediction_soft = m(prediction)
+
+    # # get the class with the highest probability
+    # prediction_max = torch.argmax(prediction, axis=1)
+    # # resize to original image size
+    # prediction = transforms.functional.resize(prediction_max, size=shape, interpolation=transforms.InterpolationMode.NEAREST)
+    # # convert shape: 4, 1024, 2048 (b, h, w) -> 1024, 2048, 4
+    # prediction = prediction.permute(1, 2, 0)
+    # # convert to numpy
+    # prediction = prediction.cpu().detach().numpy()
+
+    # return prediction
     m = torch.nn.Softmax(dim=1)
     prediction_soft = m(prediction)
-    # get the class with the highest probability
     prediction_max = torch.argmax(prediction_soft, axis=1)
-    # resize to original image size
     prediction = transforms.functional.resize(prediction_max, size=shape, interpolation=transforms.InterpolationMode.NEAREST)
-    # convert shape: 4, 1024, 2048 (b, h, w) -> 1024, 2048, 4
-    prediction = prediction.permute(1, 2, 0)
-    # convert to numpy
-    prediction = prediction.cpu().detach().numpy()
 
-    return prediction
+    prediction_numpy = prediction.cpu().detach().numpy()
+    prediction_numpy = prediction_numpy.squeeze()
+
+    return prediction_numpy
+
 
 
 def plot_images_with_masks(dataset, indices, num_images_per_row=2, title="default_title",
