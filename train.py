@@ -248,9 +248,11 @@ def main(args):
                 masks = map_id_to_train_id(masks).to(device)
 
                 outputs = model(images)
-                dice = dice_score(outputs, masks.squeeze())
+                dice = dice_score(outputs, masks)
                 loss = criterion(outputs, masks.squeeze().long())
-                total_val_dice += dice.item()
+                # dice.mean() for mean across channels (classes)
+                # dice.sum() for sum across channels (classes)
+                total_val_dice += dice.mean().item()
                 total_val_loss += loss.item()
             val_losses.append(total_val_loss / num_val_batches)
             val_dices.append(total_val_dice / num_val_batches)
@@ -313,9 +315,12 @@ def test_model(args, model_name="deeplabv3plus_ce.pth"):
             masks = map_id_to_train_id(masks).to(device)
 
             outputs = model(images)
-            dice = dice_score(outputs, masks.squeeze())
+            print("OUT:", outputs.shape, masks.shape, masks.squeeze().shape)
+            dice = dice_score(outputs, masks)
             loss = criterion(outputs, masks.squeeze().long())
-            total_test_dice += dice.item()
+            # dice.mean() for mean across channels (classes)
+            # dice.sum() for sum across channels (classes)
+            total_test_dice += dice.mean().item()
             totalt_test_loss += loss.item()
 
             if random.random() < 0.2:
