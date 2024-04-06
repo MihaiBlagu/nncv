@@ -2,7 +2,8 @@ import matplotlib.pyplot as plt
 from torchvision import transforms
 import torch
 import os
-
+import albumentations as A
+import numpy as np
 
 IMAGENET_MEAN_R, IMAGENET_MEAN_G, IMAGENET_MEAN_B = 0.485, 0.456, 0.406
 IMAGENET_STD_R, IMAGENET_STD_G, IMAGENET_STD_B = 0.229, 0.224, 0.225
@@ -54,18 +55,6 @@ def preprocess_mask(mask):
 def preprocess_train(img):
     train_transform = transforms.Compose([
         transforms.Resize(size=(512, 512), interpolation=transforms.InterpolationMode.NEAREST, antialias=True),
-        # transforms.RandomCrop(size=(512, 512)),
-        # transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
-        # transforms.RandomHorizontalFlip(),
-        
-        transforms.ToTensor(),
-        transforms.RandomApply([transforms.ColorJitter(brightness=0.5)], p=0.5),  # Randomly adjust brightness
-        transforms.RandomApply([transforms.ColorJitter(contrast=0.5)], p=0.5),    # Randomly adjust contrast
-        # transforms.RandomApply([SimulateSnow(snow_coeff=0.1)], p=0.2),             # Simulate snow
-        transforms.RandomApply([SimulateRain(rain_coeff=0.1)], p=0.2),             # Simulate rain
-        transforms.RandomApply([SimulateFog(fog_coeff=0.1)], p=0.2),               # Simulate fog
-        transforms.RandomHorizontalFlip(p=0.5),                                     # Random horizontal flip
-        transforms.RandomRotation(10), 
 
         # transforms.ToTensor(),
         # transforms.Normalize(
@@ -75,6 +64,53 @@ def preprocess_train(img):
     ])
 
     return train_transform(img)
+
+
+def preprocess_train_robustness(image):
+    # Define a list to hold the transformations
+    train_transforms = []
+    
+    # resize to 512x512
+    train_transforms.append(A.Resize(512, 512))
+
+    prob = torch.rand(1)
+
+    # Randomly select weather conditions based on their probabilities
+    if prob < 0.2:
+        # RAIN
+        train_transforms.append(A.RandomRain(p=0.7))
+        # add fog
+        if torch.rand(1) < 0.3:
+            train_transforms.append(A.RandomFog())
+    elif prob >= 0.2 and prob < 0.4:
+        # SNOW
+        train_transforms.append(A.RandomSnow(snow_point_lower=0.3, snow_point_upper=0.5, brightness_coeff=2.5, p=0.7))
+        # add fog
+        # if torch.rand(1) < 0.3:
+        #     train_transforms.append(A.RandomFog(p=0.7))
+    elif prob >= 0.4 and prob < 0.6:
+        # JUST FOG
+        train_transforms.append(A.RandomFog(p=0.7))
+    elif prob >= 0.6 and prob < 0.8:
+        # SUN FLARE
+        train_transforms.append(A.RandomSunFlare(p=0.7))
+    elif prob >= 0.8 and prob < 1.0:
+        # SHADOW
+        train_transforms.append(A.RandomShadow(p=0.7))
+    
+    # Add random brightness and contrast changes
+    if torch.rand(1) < 0.5:
+        train_transforms.append(A.RandomBrightnessContrast())
+    
+    # Compose all transformations
+    transformation_piepline = A.Compose(train_transforms)
+    
+    # transform image to numpy and apply transform:
+    transformed_image = transformation_piepline(image=np.array(image))['image']
+
+    # Apply the composed transformations to the image
+    return transforms.ToTensor()(transformed_image)
+
 
 
 def preprocess(img):
@@ -140,10 +176,10 @@ def plot_images_with_masks(dataset, indices, num_images_per_row=2, title="defaul
 
     for i, idx in enumerate(indices):
         img, mask = dataset[idx]
-        img, mask = preprocess(img), preprocess(mask)
+        # img, mask = preprocess_train(img), preprocess_train(mask)
         ax = axes[i // num_images_per_row, i % num_images_per_row] if num_rows > 1 else axes[i % num_images_per_row]
         ax.imshow(img.permute(1, 2, 0))
-        ax.imshow(mask.permute(1, 2, 0), alpha=0.35, cmap='jet')
+        # ax.imshow(mask.permute(1, 2, 0), alpha=0.35, cmap='jet')
         ax.set_title(f'Image {idx}')
         ax.axis('off')
 
