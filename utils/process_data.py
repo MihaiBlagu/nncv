@@ -14,6 +14,31 @@ NORM_MEAN_R, NORM_MEAN_G, NORM_MEAN_B = 0.5, 0.5, 0.5
 NORM_STD_R, NORM_STD_G, NORM_STD_B = 0.25, 0.25, 0.25
 
 
+class SimulateSnow(object):
+    def __init__(self, snow_coeff=0.2):
+        self.snow_coeff = snow_coeff
+
+    def __call__(self, img):
+        snow_image = img + self.snow_coeff * torch.randn_like(img)
+        return torch.clamp(snow_image, min=0, max=1)
+
+class SimulateRain(object):
+    def __init__(self, rain_coeff=0.2):
+        self.rain_coeff = rain_coeff
+
+    def __call__(self, img):
+        rain_image = img + self.rain_coeff * torch.randn_like(img)
+        return torch.clamp(rain_image, min=0, max=1)
+
+class SimulateFog(object):
+    def __init__(self, fog_coeff=0.2):
+        self.fog_coeff = fog_coeff
+
+    def __call__(self, img):
+        fog_image = img + self.fog_coeff * torch.randn_like(img)
+        return torch.clamp(fog_image, min=0, max=1)
+
+
 def preprocess_mask(mask):
     ""
     transform = transforms.Compose([
@@ -29,9 +54,20 @@ def preprocess_mask(mask):
 def preprocess_train(img):
     train_transform = transforms.Compose([
         transforms.Resize(size=(512, 512), interpolation=transforms.InterpolationMode.NEAREST, antialias=True),
+        # transforms.RandomCrop(size=(512, 512)),
         # transforms.ColorJitter(brightness=0.5, contrast=0.5, saturation=0.5),
         # transforms.RandomHorizontalFlip(),
+        
         transforms.ToTensor(),
+        transforms.RandomApply([transforms.ColorJitter(brightness=0.5)], p=0.5),  # Randomly adjust brightness
+        transforms.RandomApply([transforms.ColorJitter(contrast=0.5)], p=0.5),    # Randomly adjust contrast
+        # transforms.RandomApply([SimulateSnow(snow_coeff=0.1)], p=0.2),             # Simulate snow
+        transforms.RandomApply([SimulateRain(rain_coeff=0.1)], p=0.2),             # Simulate rain
+        transforms.RandomApply([SimulateFog(fog_coeff=0.1)], p=0.2),               # Simulate fog
+        transforms.RandomHorizontalFlip(p=0.5),                                     # Random horizontal flip
+        transforms.RandomRotation(10), 
+
+        # transforms.ToTensor(),
         # transforms.Normalize(
         #     mean=[IMAGENET_MEAN_R, IMAGENET_MEAN_G, IMAGENET_MEAN_B], 
         #     std=[IMAGENET_STD_R, IMAGENET_STD_G, IMAGENET_STD_B]
@@ -50,8 +86,10 @@ def preprocess(img):
     transform = transforms.Compose([
         transforms.Resize(size=(512, 512), interpolation=transforms.InterpolationMode.BILINEAR, antialias=True),
         transforms.ToTensor(),
-        # transforms.Normalize(mean=[IMAGENET_MEAN_R, IMAGENET_MEAN_G, IMAGENET_MEAN_R], 
-        #                      std=[IMAGENET_STD_R, IMAGENET_STD_G, IMAGENET_STD_B])
+        # transforms.Normalize(
+        #     mean=[IMAGENET_MEAN_R, IMAGENET_MEAN_G, IMAGENET_MEAN_R], 
+        #     std=[IMAGENET_STD_R, IMAGENET_STD_G, IMAGENET_STD_B]
+        # )
     ])
     img = transform(img)
     # img = img.unsqueeze(0)

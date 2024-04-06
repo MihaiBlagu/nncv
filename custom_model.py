@@ -28,7 +28,7 @@ class Model(nn.Module):
             nn.ReLU(inplace=True)
         )
 
-        self.classifer = nn.Conv2d(256, num_classes, 1)
+        self.classifier = nn.Conv2d(256, num_classes, 1)
 
     def forward(self, x):
 
@@ -44,7 +44,7 @@ class Model(nn.Module):
         x_3x3_upscaled = F.interpolate(
             x_3x3, scale_factor=(4, 4),
             mode='bilinear', align_corners=True)
-        x_out = self.classifer(x_3x3_upscaled)
+        x_out = self.classifier(x_3x3_upscaled)
         return x_out
     
 
