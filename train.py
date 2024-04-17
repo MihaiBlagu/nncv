@@ -166,7 +166,8 @@ def main(args):
     random.seed(42)
 
     # data loading
-    trainset = Cityscapes(args.data_path, split='train', mode='fine', target_type='semantic',
+    # TRAIN = TRAIN_ROBUST when using args.test_data_path
+    trainset = Cityscapes(args.test_data_path, split='train', mode='fine', target_type='semantic',
                          transform=preprocess_train, target_transform=preprocess_mask)
     valset = Cityscapes(args.test_data_path, split='val', mode='fine', target_type='semantic',
                         transform=preprocess, target_transform=preprocess_mask)
@@ -185,10 +186,13 @@ def main(args):
     val_loader = DataLoader(valset, batch_size=batch_size, shuffle=True, num_workers=2, drop_last=True)
 
     # Define the model and optimizer
-    model = Model(num_classes=34).to(device)
+    model = Model().to(device)
 
-    epochs = 150
+    epochs = 50
+    # sgd
     lr = 0.1
+    # adam
+    # lr = 0.01
 
     # start from lr = (1 - curr_iter/max_iter)^0.9
     optimizer = torch.optim.SGD(params=[
@@ -199,12 +203,16 @@ def main(args):
     # gamma = 0.1 -> deccay factor
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.1)
     scheduler = PolyLR(optimizer, epochs, power=0.9)
+    # dont forget scheduler
 
     # optimizer = torch.optim.Adam(params=model.parameters(), lr=lr, weight_decay=1e-5)
 
     # loss
     # changed utils.py: 255 -> 33
     criterion = torch.nn.CrossEntropyLoss(ignore_index=33)
+
+    # scorer
+    scorer = Dice(num_classes=34, ignore_index=33).to(device)
 
     # patience for early stopping
     patience = 5
@@ -257,7 +265,8 @@ def main(args):
                 masks = map_id_to_train_id(masks).to(device)
 
                 outputs = model(images)
-                dice = dice_score(outputs, masks)
+                # dice = dice_score(outputs, masks)
+                dice = scorer(outputs.argmax(dim=1), masks.squeeze().long())
                 loss = criterion(outputs, masks.squeeze().long())
                 # dice.mean() for mean across channels (classes)
                 # dice.sum() for sum across channels (classes)
@@ -276,7 +285,7 @@ def main(args):
 
         # periodic model saving
         if epoch % 10 == 0:
-            torch.save(model.state_dict(), os.path.join(args.model_save_path, f"deeplabv3plus_sgd_ce_e{epoch}_robust_lr{lr}.pth"))
+            torch.save(model.state_dict(), os.path.join(args.model_save_path, f"final_deeplab_sgd_ce_e{epoch}_robust_lr{lr}.pth"))
 
         # # early stopping if validation stops decreasing
         # loss_difference = abs(val_losses[-1] - (sum(val_losses[-(patience - 1):]) / (patience - 1)))
@@ -289,7 +298,12 @@ def main(args):
 
     if not stopped_early:
         # save model
-        torch.save(model.state_dict(), os.path.join(args.model_save_path, f"deeplabv3plus_sgd_ce_e{epochs}_robust_lr{lr}.pth"))
+        torch.save(model.state_dict(), os.path.join(args.model_save_path, f"final_deeplab_sgd_ce_e{epochs}_robust_lr{lr}.pth"))
+
+    # plot losses and dice
+    plot_losses_and_dice(train_losses, val_losses, val_dices, 
+                         save=True, save_path="./plots/losses", 
+                         model_name=f"final_deeplab_sgd_ce_e{epochs}_robust_lr{lr}.pth")
 
 
 def test_model(args, model_name="deeplabv3plus_ce.pth", norm=False):
@@ -297,7 +311,7 @@ def test_model(args, model_name="deeplabv3plus_ce.pth", norm=False):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     # load model from .pth file
-    model = Model(num_classes=34).to(device)
+    model = Model().to(device)
     model.load_state_dict(torch.load(os.path.join(args.model_save_path, model_name), 
                                     map_location=torch.device(device)))
 
@@ -314,7 +328,7 @@ def test_model(args, model_name="deeplabv3plus_ce.pth", norm=False):
     criterion = torch.nn.CrossEntropyLoss(ignore_index=33)
 
     # dice score
-    scorer = Dice(num_classes=34, ignore_index=33)
+    scorer = Dice(num_classes=34, ignore_index=33).to(device)
 
     # Testing
     model.eval()
@@ -370,7 +384,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     # test_model(args, model_name="deeplabv3plus_sgd_ce_e10_none_lr0.01_18.pth")
     # test_model(args, model_name="deeplabv3plus_sgd_ce_e30_none_lr0.01_18.pth")
-    # main(args)
-    # test_model(args, model_name="deeplabv3plus_sgd_ce_e100_robust_lr0.1.pth", norm=False)
-    test_model(args, model_name="deeplabv3plus_sgd_ce_e20_none_lr0.1.pth", norm=False)
-    test_model(args, model_name="deeplabv3plus_sgd_ce_e30_none_lr0.1.pth", norm=False)
+    main(args)
+    test_model(args, model_name="final_deeplab_sgd_ce_e40_robust_lr0.1.pth", norm=False)
+    # test_model(args, model_name="deeplabv3plus_sgd_ce_e50_bc_nonorm_lr0.1.pth", norm=False)
+    # test_model(args, model_name="deeplabv3plus_sgd_ce_e70_bc_nonorm_lr0.1.pth", norm=False)

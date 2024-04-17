@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 from torchvision import transforms
 import torch
 import os
-import albumentations as A
+# import albumentations as A
 import numpy as np
 
 IMAGENET_MEAN_R, IMAGENET_MEAN_G, IMAGENET_MEAN_B = 0.485, 0.456, 0.406
@@ -55,8 +55,8 @@ def preprocess_mask(mask):
 def preprocess_train(img):
     train_transform = transforms.Compose([
         transforms.Resize(size=(512, 512), interpolation=transforms.InterpolationMode.NEAREST, antialias=True),
-
-        # transforms.ToTensor(),
+        transforms.ToTensor(),
+        # transforms.ColorJitter(brightness=0.2, contrast=0.2)
         # transforms.Normalize(
         #     mean=[IMAGENET_MEAN_R, IMAGENET_MEAN_G, IMAGENET_MEAN_B], 
         #     std=[IMAGENET_STD_R, IMAGENET_STD_G, IMAGENET_STD_B]
@@ -67,49 +67,54 @@ def preprocess_train(img):
 
 
 def preprocess_train_robustness(image):
-    # Define a list to hold the transformations
-    train_transforms = []
+    # # Define a list to hold the transformations
+    # train_transforms = []
     
-    # resize to 512x512
-    train_transforms.append(A.Resize(512, 512))
+    # # resize to 512x512
+    # train_transforms.append(A.Resize(512, 512))
 
-    prob = torch.rand(1)
+    # prob = torch.rand(1)
 
-    # Randomly select weather conditions based on their probabilities
-    if prob < 0.2:
-        # RAIN
-        train_transforms.append(A.RandomRain(p=0.7))
-        # add fog
-        if torch.rand(1) < 0.3:
-            train_transforms.append(A.RandomFog())
-    elif prob >= 0.2 and prob < 0.4:
-        # SNOW
-        train_transforms.append(A.RandomSnow(snow_point_lower=0.3, snow_point_upper=0.5, brightness_coeff=2.5, p=0.7))
-        # add fog
-        # if torch.rand(1) < 0.3:
-        #     train_transforms.append(A.RandomFog(p=0.7))
-    elif prob >= 0.4 and prob < 0.6:
-        # JUST FOG
-        train_transforms.append(A.RandomFog(p=0.7))
-    elif prob >= 0.6 and prob < 0.8:
-        # SUN FLARE
-        train_transforms.append(A.RandomSunFlare(p=0.7))
-    elif prob >= 0.8 and prob < 1.0:
-        # SHADOW
-        train_transforms.append(A.RandomShadow(p=0.7))
+    # # Randomly select weather conditions based on their probabilities
+    # if prob < 0.2:
+    #     # RAIN
+    #     train_transforms.append(A.RandomRain(p=0.7))
+    #     # add fog
+    #     if torch.rand(1) < 0.3:
+    #         train_transforms.append(A.RandomFog())
+    # elif prob >= 0.2 and prob < 0.4:
+    #     # SNOW
+    #     train_transforms.append(A.RandomSnow(snow_point_lower=0.3, snow_point_upper=0.5, brightness_coeff=2.5, p=0.7))
+    #     # add fog
+    #     # if torch.rand(1) < 0.3:
+    #     #     train_transforms.append(A.RandomFog(p=0.7))
+    # elif prob >= 0.4 and prob < 0.6:
+    #     # JUST FOG
+    #     train_transforms.append(A.RandomFog(p=0.7))
+    # elif prob >= 0.6 and prob < 0.8:
+    #     # SUN FLARE
+    #     train_transforms.append(A.RandomSunFlare(p=0.7))
+    # elif prob >= 0.8 and prob < 1.0:
+    #     # SHADOW
+    #     train_transforms.append(A.RandomShadow(p=0.7))
     
-    # Add random brightness and contrast changes
-    if torch.rand(1) < 0.5:
-        train_transforms.append(A.RandomBrightnessContrast())
+    # # Add random brightness and contrast changes
+    # if torch.rand(1) < 0.5:
+    #     train_transforms.append(A.RandomBrightnessContrast())
     
-    # Compose all transformations
-    transformation_piepline = A.Compose(train_transforms)
+    # # Compose all transformations
+    # transformation_piepline = A.Compose(train_transforms)
     
-    # transform image to numpy and apply transform:
-    transformed_image = transformation_piepline(image=np.array(image))['image']
+    # # transform image to numpy and apply transform:
+    # transformed_image = transformation_piepline(image=np.array(image))['image']
 
-    # Apply the composed transformations to the image
-    return transforms.ToTensor()(transformed_image)
+    # # Apply the composed transformations to the image
+    # return transforms.ToTensor()(transformed_image)
+
+    # for prewrittne images
+    tr = transforms.Compose([transforms.ToTensor()])
+
+    return tr(image)
 
 
 
@@ -209,7 +214,7 @@ def plot_images_predictions_masks(images, predictions, masks, indices, num_image
         ax_pred = axes[i // num_images_per_row, 2 * (i % num_images_per_row) + 1]
 
         ax_img.imshow(img.cpu().permute(1,2,0).numpy())
-        ax_img.imshow(pred.argmax(dim=0).cpu().numpy(), alpha=0.35, cmap='jet')
+        # ax_img.imshow(pred.argmax(dim=0).cpu().numpy(), alpha=0.35, cmap='jet')
         ax_img.set_title(f'Mask {idx}')
         ax_img.axis('off')
 
@@ -223,5 +228,33 @@ def plot_images_predictions_masks(images, predictions, masks, indices, num_image
         if not os.path.exists(save_path):
             os.makedirs(save_path)
         plt.savefig(os.path.join(save_path, f'{title}.png'))
+
+    plt.show()
+
+
+def plot_losses_and_dice(train_losses, val_losses, val_dices, 
+                         save=True, save_path="./plots/losses", model_name="deeplabv3plus_ce.pt"):
+    epochs = range(1, len(train_losses) + 1)
+
+    plt.figure(figsize=(12, 6))
+    plt.plot(epochs, train_losses, label='Training Loss')
+    plt.plot(epochs, val_losses, label='Validation Loss')
+    plt.plot(epochs, val_dices, label='Validation Dice Score')
+
+    plt.title('Training and Validation Metrics')
+    plt.xlabel('Epochs')
+    plt.ylabel('Loss / Dice Score')
+    plt.legend()
+    plt.grid(True)
+
+    if save:
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+
+        # Get filename and replace extension
+        root, ext = os.path.splitext(model_name)
+        filename = root + ".png"
+        # Save the plot with the new filename
+        plt.savefig(os.path.join(save_path, filename))
 
     plt.show()
