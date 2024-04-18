@@ -34,128 +34,6 @@ def get_arg_parser():
     return parser
 
 
-def ex_main(args):
-    """define your model, trainingsloop optimitzer etc. here"""
-
-    # get device
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    random.seed(42)
-
-    # define batch size and epochs
-    batch_size = 32
-    epochs = 15
-    k_folds = 5
-
-    # data loading
-    dataset = Cityscapes(args.data_path, split='train', mode='fine', target_type='semantic')
-
-    # visualize example images
-    # plot_images_with_masks(dataset, indices=[0, 1, 2, 3, 4, 5, 6, 7], num_images_per_row=4,
-    #                        save=False, save_path="./results/plots"    )
-
-    # save original image height and width
-    img_w, img_h = dataset[0][0].size
-
-    # Initialize the k-fold cross-validation
-    kf = KFold(n_splits=k_folds, shuffle=True)
-
-    # Define the model and optimizer
-    # model = Model().to(device)
-    model = Model(num_classes=34).to(device)
-    
-    # USE THIS WITH KFOLD
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01, weight_decay=1e-3)
-
-    # USE THIS WHEN MOVING AWAY FROM KFOLD
-    # # start from lr = (1 - curr_iter/max_iter)^0.9
-    # optimizer = torch.optim.SGD(params=model.parameters(), lr=0.1, momentum=0.9, weight_decay=1e-5)
-    # # step_size = 1 -> decay weight every epoch
-    # # gamma = 0.1 -> deccay factor
-    # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.1)
-
-    # loss
-    criterion = torch.nn.CrossEntropyLoss(ignore_index=255, reduction="mean")
-
-    # Loop through each fold
-    for fold, (train_idx, val_idx) in enumerate(kf.split(dataset)):
-        print(f"Fold {fold + 1}")
-        print("-------")
-
-        # define indices for current fold
-        train_indices = train_idx.tolist()
-        val_indices = val_idx.tolist()
-
-        # training
-        train_losses = []
-        val_losses = []
-        val_dices = []
-        for epoch in range(1, epochs + 1):
-            # shuffle training indices each epoch if desired
-            random.shuffle(train_indices)
-
-            # train
-            model.train()
-            total_train_loss = 0.0
-            num_train_batches = len(train_indices) // batch_size
-            for i in range(0, len(train_indices), batch_size):
-                # create a batch
-                batch_indices = train_indices[i:i+batch_size]
-                images, masks = [], []
-                for idx in batch_indices:
-                    img, mask = dataset[idx]
-                    # preproc
-                    images.append(preprocess(img))
-                    masks.append(preprocess_mask(mask))
-                images = torch.stack(images).to(device)
-                masks = torch.stack(masks).to(device)
-
-                optimizer.zero_grad()
-                # images shape: b, 3, 512, 512
-                outputs = model(images) 
-                # outputs shape: b, 34, 512, 512 -> 1024, 2048, b -> no postproc yet???? also mask resized
-                # outputs = postprocess(outputs, (img_h, img_w))
-                loss = criterion(outputs, masks.squeeze().long())
-                loss.backward()
-                optimizer.step()
-
-                total_train_loss += loss.item()
-            train_losses.append(total_train_loss / num_train_batches)
-            print(f"Epoch {epoch}: Training Loss: {train_losses[-1]:.4f}")
-
-            # validation
-            model.eval()
-            total_val_dice = 0.0
-            total_val_loss = 0.0
-            num_val_batches = len(val_indices) // batch_size
-            with torch.no_grad():
-                for i in range(0, len(val_indices), batch_size):
-                    # create batches
-                    batch_indices = val_indices[i:i+batch_size]
-                    images, masks = [], []
-                    for idx in batch_indices:
-                        img, mask = dataset[idx]
-                        img = preprocess(img)  # Add batch dimension
-                        mask = preprocess_mask(mask)  # Add batch dimension
-                        images.append(img)
-                        masks.append(mask)
-                    images = torch.stack(images).to(device)
-                    masks = torch.stack(masks).to(device)
-
-                    outputs = model(images)
-                    dice = dice_score(outputs, masks.squeeze())
-                    loss = criterion(outputs, masks.squeeze().long())
-
-                    total_val_dice += dice.item()
-                    total_val_loss += loss.item()
-                val_losses.append(total_train_loss / num_val_batches)
-                val_dices.append(total_val_dice / num_val_batches)
-                print(f"Epoch {epoch}: Validation Loss: {val_losses[-1]:.4f}")
-                print(f"Epoch {epoch}: Validation Dice Score: {val_dices[-1]:.4f}")
-
-    # save model
-    torch.save(model.state_dict(), os.path.join(args.model_save_path, "deeplabv3plus_ce.pth"))
-
-
 def main(args):
     """define your model, trainingsloop optimitzer etc. here"""
     # set cuda reservation max split size
@@ -167,14 +45,14 @@ def main(args):
 
     # data loading
     # TRAIN = TRAIN_ROBUST when using args.test_data_path
-    trainset = Cityscapes(args.test_data_path, split='train', mode='fine', target_type='semantic',
+    trainset = Cityscapes(args.data_path, split='train', mode='fine', target_type='semantic',
                          transform=preprocess_train, target_transform=preprocess_mask)
     valset = Cityscapes(args.test_data_path, split='val', mode='fine', target_type='semantic',
                         transform=preprocess, target_transform=preprocess_mask)
 
     # visualize example images
     # plot_images_with_masks(dataset, indices=[0, 1, 2, 3, 4, 5, 6, 7], num_images_per_row=4,
-    #                        save=False, save_path="./results/plots"    )
+                        #    save=False, save_path="./results/plots"    )
 
     # save original image height and width
     # img_w, img_h = trainset[0][0].size
@@ -285,7 +163,7 @@ def main(args):
 
         # periodic model saving
         if epoch % 10 == 0:
-            torch.save(model.state_dict(), os.path.join(args.model_save_path, f"final_deeplab_sgd_ce_e{epoch}_robust_lr{lr}.pth"))
+            torch.save(model.state_dict(), os.path.join(args.model_save_path, f"final_deeplab_sgd_ce_e{epoch}_none_lr{lr}.pth"))
 
         # # early stopping if validation stops decreasing
         # loss_difference = abs(val_losses[-1] - (sum(val_losses[-(patience - 1):]) / (patience - 1)))
@@ -298,7 +176,7 @@ def main(args):
 
     if not stopped_early:
         # save model
-        torch.save(model.state_dict(), os.path.join(args.model_save_path, f"final_deeplab_sgd_ce_e{epochs}_robust_lr{lr}.pth"))
+        torch.save(model.state_dict(), os.path.join(args.model_save_path, f"final_deeplab_sgd_ce_e{epochs}_none_lr{lr}.pth"))
 
     # plot losses and dice
     plot_losses_and_dice(train_losses, val_losses, val_dices, 
@@ -382,9 +260,6 @@ if __name__ == "__main__":
     # Get the arguments
     parser = get_arg_parser()
     args = parser.parse_args()
-    # test_model(args, model_name="deeplabv3plus_sgd_ce_e10_none_lr0.01_18.pth")
-    # test_model(args, model_name="deeplabv3plus_sgd_ce_e30_none_lr0.01_18.pth")
+
     main(args)
-    test_model(args, model_name="final_deeplab_sgd_ce_e40_robust_lr0.1.pth", norm=False)
-    # test_model(args, model_name="deeplabv3plus_sgd_ce_e50_bc_nonorm_lr0.1.pth", norm=False)
-    # test_model(args, model_name="deeplabv3plus_sgd_ce_e70_bc_nonorm_lr0.1.pth", norm=False)
+    test_model(args, model_name="final_deeplab_sgd_ce_e40_none_lr0.1.pth", norm=False)

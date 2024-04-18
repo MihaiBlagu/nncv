@@ -1,5 +1,6 @@
 # DeepLabV3 pytirch impl: https://medium.com/@itberrios6/deeplabv3-c0c8c93d25a4
 # DeepLabV3+ from scratch: https://medium.com/@r1j1nghimire/semantic-segmentation-using-deeplabv3-from-scratch-b1ff57a27be
+# model from: https://github.com/VainF/DeepLabV3Plus-Pytorch/blob/master/main.py
 
 import torch
 import torch.nn as nn
