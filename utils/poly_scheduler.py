@@ -1,3 +1,5 @@
+# scheduler from: https://github.com/VainF/DeepLabV3Plus-Pytorch/blob/master/main.py
+
 from torch.optim.lr_scheduler import _LRScheduler, StepLR
 
 class PolyLR(_LRScheduler):

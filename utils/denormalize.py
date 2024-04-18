@@ -1,3 +1,5 @@
+# denomralization from: https://github.com/VainF/DeepLabV3Plus-Pytorch/blob/master/main.py
+
 from torchvision.transforms.functional import normalize
 import torch.nn as nn
 import numpy as np
