@@ -3,8 +3,11 @@
 This repository is the *messy* implementation of the 5LSM0 final assignemt.
 
 Student: Alexandru-Mihai Blagu
+
 Email: a.blagu@student.tue.nl
+
 Codlab username: mblagu
+
 
 By default, runnning the `train.py` file runs a training session with the DeepLabV3+ mode (https://github.com/VainF/DeepLabV3Plus-Pytorch/blob/master/main.py).
 
