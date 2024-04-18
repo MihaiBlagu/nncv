@@ -9,7 +9,7 @@ Email: a.blagu@student.tue.nl
 Codlab username: mblagu
 
 
-By default, runnning the `train.py` file runs a training session with the DeepLabV3+ mode (https://github.com/VainF/DeepLabV3Plus-Pytorch/blob/master/main.py).
+By default, runnning the `train.py` file runs a training session with the DeepLabV3+ model (https://github.com/VainF/DeepLabV3Plus-Pytorch/blob/master/main.py).
 
 Additionally, If a "robustness" training session is to be run, the Alubumenations library has to be installed:
 
